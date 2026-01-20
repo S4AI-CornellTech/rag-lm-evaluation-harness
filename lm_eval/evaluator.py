@@ -369,6 +369,7 @@ def simple_evaluate(
         fewshot_as_multiturn=fewshot_as_multiturn,
         verbosity=verbosity,
         confirm_run_unsafe_code=confirm_run_unsafe_code,
+        model_args=model_args,
     )
     if verbosity is not None:
         setup_logging(verbosity=verbosity)
@@ -432,6 +433,7 @@ def evaluate(
     fewshot_as_multiturn: bool = False,
     verbosity: str = "INFO",
     confirm_run_unsafe_code: bool = False,
+    model_args: Optional[Union[str, dict]] = None,
 ):
     """Instantiate and evaluate a model on a list of tasks.
 
@@ -638,12 +640,38 @@ def evaluate(
             task_name = next(iter(task_dict))
             task_obj = task_dict[task_name]
             num_fewshot = task_obj.config["num_fewshot"]
-            import datetime
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            print("timestamp:", timestamp)
-            base_dir = f"lm_eval/results/acc/rag/{task_name}"
-            os.makedirs(base_dir, exist_ok=True)
-            filename = os.path.join(base_dir, f"results_{task_name}_fewshot{num_fewshot}_{timestamp}.txt")
+            
+            # Get model_args for filename - extract pretrained if it's a dict
+            if isinstance(model_args, dict):
+                model_args_str = model_args.get("pretrained", "unknown").replace("/", "-")
+            else:
+                model_args_str = model_args.replace("/", "-") if model_args else "unknown"
+            
+            # Check if RAG parameters are provided in metadata
+            metadata_dict = task_obj.config.metadata if isinstance(task_obj.config.metadata, dict) else {}
+            
+            if "retrieved_docs_path" in metadata_dict:
+                # Extract retrieval parameters from the retrieved docs filename
+                # Pattern: {task}_{datastore_dataset}_{index_type}_{quantization}_{size}_np_{nprobe}_k_{k}_retrieved_doc_ids.json
+                retrieved_docs_path = metadata_dict.get("retrieved_docs_path")
+                import os
+                basename = os.path.basename(retrieved_docs_path)
+                # Remove .json extension and split by underscore
+                parts = basename.replace(".json", "").split("_")
+                # Parse: task, datastore_dataset, index_type, quantization, size, np, nprobe, k, k_value, retrieved, doc, ids
+                task_from_file = parts[0]
+                datastore_dataset = parts[1]
+                index_type = parts[2]
+                quantization = parts[3]
+                size = parts[4]
+                nprobe = parts[6]  # skip "np" at index 5
+                k = parts[8]  # skip "k" at index 7
+                
+                filename = f"accuracy_{model_args_str}_{task_from_file}_{datastore_dataset}_{index_type}_{quantization}_{size}_np_{nprobe}_k_{k}.txt"
+            else:
+                # Use baseline format if no RAG parameters
+                filename = f"accuracy_{model_args_str}_{task_name}_baseline.txt"
+
             with open(filename, "w", encoding="utf-8") as f:
                 for doc_id, doc in doc_iterator:
                     if indices:

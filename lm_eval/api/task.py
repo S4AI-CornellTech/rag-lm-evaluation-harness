@@ -1196,20 +1196,14 @@ class ConfigurableTask(Task):
 
         example = self.doc_to_text(doc)
 
-        ### RAG
-        # retrieved_passages = (
-        #     self.retrieved_texts.get(str(retrieved_doc_id))
-        #     if self.retrieved_texts else None
-        # )
-        # if retrieved_passages:
-            # context = "".join(retrieved_passages)
-            # if isinstance(example, str):
-            #     contexts = (
-            #         "Context:"
-            #         + context
-            #     )
-
+        ### RAG: Inject retrieved context if available
         contexts = ""
+        if self.retrieved_texts is not None and retrieved_doc_id is not None:
+            retrieved_passages = self.retrieved_texts.get(str(retrieved_doc_id))
+            if retrieved_passages:
+                # Join passages and prepend as context
+                context_text = "".join(retrieved_passages)
+                contexts = f"Context:\n{context_text}\n\n"
 
         if apply_chat_template:
             if self.multiple_input:
