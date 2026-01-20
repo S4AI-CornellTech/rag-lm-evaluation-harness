@@ -652,22 +652,23 @@ def evaluate(
             
             if "retrieved_docs_path" in metadata_dict:
                 # Extract retrieval parameters from the retrieved docs filename
-                # Pattern: {task}_{datastore_dataset}_{index_type}_{quantization}_{size}_np_{nprobe}_k_{k}_retrieved_doc_ids.json
+                # Pattern: {task}_{datastore_dataset}_{index_type}_{quantization}_{dimension}_{size}_np_{nprobe}_k_{k}_retrieved_doc_text.json
                 retrieved_docs_path = metadata_dict.get("retrieved_docs_path")
                 import os
                 basename = os.path.basename(retrieved_docs_path)
                 # Remove .json extension and split by underscore
                 parts = basename.replace(".json", "").split("_")
-                # Parse: task, datastore_dataset, index_type, quantization, size, np, nprobe, k, k_value, retrieved, doc, ids
+                # Parse: task, datastore_dataset, index_type, quantization, d, dimension, size, np, nprobe, k, k_value, retrieved, doc, text
                 task_from_file = parts[0]
                 datastore_dataset = parts[1]
                 index_type = parts[2]
                 quantization = parts[3]
-                size = parts[4]
-                nprobe = parts[6]  # skip "np" at index 5
-                k = parts[8]  # skip "k" at index 7
+                dimension = parts[5]  # Get the dimension value (e.g., 768)
+                size = parts[6]
+                nprobe = parts[8]  # skip "np" at index 7
+                k = parts[10]  # skip "k" at index 9
                 
-                filename = f"accuracy_{model_args_str}_{task_from_file}_{datastore_dataset}_{index_type}_{quantization}_{size}_np_{nprobe}_k_{k}.txt"
+                filename = f"accuracy_{model_args_str}_{task_from_file}_{datastore_dataset}_{index_type}_{quantization}_d_{dimension}_{size}_np_{nprobe}_k_{k}.txt"
             else:
                 # Use baseline format if no RAG parameters
                 filename = f"accuracy_{model_args_str}_{task_name}_baseline.txt"
