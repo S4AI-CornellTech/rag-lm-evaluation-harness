@@ -190,6 +190,14 @@ class Run(SubCommand):
             metavar="<json>",
             help="JSON mapping task names to sample indices, e.g. '{\"task1\": [0,1,2]}'. Incompatible with --limit.",
         )
+        data_group.add_argument(
+            "--retrieved-docs",
+            dest="retrieved_docs",
+            default=None,
+            type=str,
+            metavar="<path>",
+            help="Path to retrieved docs JSON to inject as context (RAG)",
+        )
 
         # Caching and Performance
         cache_group = self._parser.add_argument_group(

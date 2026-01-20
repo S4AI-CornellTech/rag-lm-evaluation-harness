@@ -91,6 +91,11 @@ class EvaluatorConfig:
         default=None,
         metadata={"help": "dict, JSON string or path to JSON file with doc indices"},
     )
+    # Optional path to retrieved documents for RAG context
+    retrieved_docs: str | None = field(
+        default=None,
+        metadata={"help": "Path to JSON with retrieved passages keyed by doc id"},
+    )
 
     # Caching
     use_cache: str | None = field(
@@ -330,6 +335,9 @@ class EvaluatorConfig:
             self.metadata = {}
 
         self.metadata = self.model_args | self.metadata
+        # Inject retrieved docs path into metadata so tasks can access it
+        if self.retrieved_docs:
+            self.metadata["retrieved_docs_path"] = self.retrieved_docs
 
         return self
 

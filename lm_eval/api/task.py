@@ -1,6 +1,7 @@
 import abc
 import ast
 import logging
+import json
 import random
 import re
 from collections.abc import Callable
@@ -99,6 +100,9 @@ class TaskConfig(dict):
     metadata: Optional[dict] = (
         None  # by default, not used in the code. allows for users to pass arbitrary info to tasks
     )
+    # Optional path to a JSON file containing retrieved documents (for RAG-style contexts)
+    # Expected format: { "<doc_id>": ["passage1", "passage2", ...], ... }
+    retrieved_docs_path: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.generation_kwargs is not None:
@@ -979,19 +983,29 @@ class ConfigurableTask(Task):
                     eval_logger.debug(
                         f'Both target_delimiter "{self.config.target_delimiter}" and target choice: "{choice}" do not have whitespace, ignore if the language you are evaluating on does not require/use whitespace'
                     )
+        # Optionally load retrieved documents (RAG) if a path is provided via config
         self.retrieved_texts = None
         import os
-        # retrieved_json_path = os.getenv(
-        #     "RETRIEVED_JSON_PATH",
-        #     "/home/akiho.kawada/lm-eval-original/lm-evaluation-harness/lm_eval/retrieved_docs/triviaqa/compactds/triviaqa::olmes_q_retrieved_results_::_IVFPQ.65536.64.64.10.json"
-        # )
-        # import os
-        # import json
-        # assert os.path.exists(retrieved_json_path), f"Missing JSON file: {retrieved_json_path}"
-        # if os.path.exists(retrieved_json_path):
-        #     with open(retrieved_json_path, "r") as f:
-        #         self.retrieved_texts = json.load(f)
-        #     print(f"Loaded {len(self.retrieved_texts)} retrieved docs from {retrieved_json_path}")
+        retrieved_json_path = (
+            getattr(self.config, "retrieved_docs_path", None)
+            or (self.config.metadata.get("retrieved_docs_path") if isinstance(self.config.metadata, dict) else None)
+        )
+        if retrieved_json_path:
+            if os.path.exists(retrieved_json_path):
+                try:
+                    with open(retrieved_json_path, "r") as f:
+                        self.retrieved_texts = json.load(f)
+                    eval_logger.info(
+                        f"Loaded {len(self.retrieved_texts)} retrieved docs from {retrieved_json_path}"
+                    )
+                except Exception as e:
+                    eval_logger.error(
+                        f"Failed to load retrieved docs from {retrieved_json_path}: {e}"
+                    )
+            else:
+                eval_logger.warning(
+                    f"retrieved_docs_path does not exist: {retrieved_json_path}"
+                )
 
     def download(
         self, dataset_kwargs: Optional[Dict[str, Any]] = None, **kwargs
